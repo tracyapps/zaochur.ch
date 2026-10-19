@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zao Commons — Hosting &amp; Stack Compare</title>
+<style>
+  :root {
+    --ink: #2b2620;
+    --ink-soft: #5c554b;
+    --paper: #faf7f1;
+    --card: #ffffff;
+    --line: #e5ddd0;
+    --teal: #1f6f6b;
+    --teal-soft: #e3efee;
+    --amber: #9a6b1f;
+    --amber-soft: #f6ecd9;
+    --rose: #8c3b3b;
+    --rose-soft: #f5e3e3;
+    --green: #3b6b45;
+    --green-soft: #e5efe6;
+    --focus: #1f6f6b;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { transition: none !important; animation: none !important; }
+  }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 20px 140px; }
+  header.page { padding: 40px 0 8px; }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 6px; }
+  .sub { color: var(--ink-soft); margin: 0; }
+  .meta { font-size: .85rem; color: var(--ink-soft); margin-top: 8px; }
+  .meta a, p a, li a { color: var(--teal); }
+  h2 { font-size: 1.25rem; margin: 40px 0 10px; }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
+
+  .callout { background: var(--teal-soft); border: 1px solid #cfe0df; border-radius: 10px; padding: 14px 18px; margin: 14px 0; }
+  .callout.warn { background: var(--amber-soft); border-color: #e8d9b8; }
+
+  /* jurisdiction badges */
+  .badge { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .03em; padding: 2px 8px; border-radius: 999px; vertical-align: middle; }
+  .b-A { background: var(--green-soft); color: var(--green); }
+  .b-B { background: var(--teal-soft); color: var(--teal); }
+  .b-C { background: var(--rose-soft); color: var(--rose); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: .85rem; margin: 10px 0 0; padding: 0; list-style: none; }
+  .legend li { display: flex; align-items: center; gap: 6px; }
+
+  /* filters */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; }
+  .chip {
+    border: 1px solid var(--line); background: var(--card); color: var(--ink-soft);
+    border-radius: 999px; padding: 5px 14px; font-size: .85rem; cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
+  .chip:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+    outline: 3px solid var(--focus); outline-offset: 2px;
+  }
+  .search { flex: 1 1 180px; min-width: 160px; border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; font-size: .9rem; background: var(--card); color: var(--ink); }
+
+  /* cards */
+  .cat-head { margin: 34px 0 10px; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .card.inCompare { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal); }
+  .card[hidden] { display: none; }
+  .card .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .card .price { font-weight: 700; white-space: nowrap; }
+  .card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: .85rem; }
+  .card dt { color: var(--ink-soft); }
+  .card dd { margin: 0; }
+  .card .pc { font-size: .85rem; margin: 0; }
+  .card .pc b { font-weight: 600; }
+  .card .plus b { color: var(--green); } .card .minus b { color: var(--rose); }
+  .card .fit { background: var(--teal-soft); border-radius: 8px; padding: 8px 10px; font-size: .85rem; margin: 0; }
+  .card label.cmp { display: flex; gap: 8px; align-items: center; font-size: .88rem; margin-top: auto; cursor: pointer; }
+
+  /* sticky compare bar */
+  .compareBar {
+    position: fixed; left: 0; right: 0; bottom: 0; background: var(--ink); color: #fff;
+    padding: 12px 20px; display: none; align-items: center; gap: 10px; flex-wrap: wrap; z-index: 50;
+    box-shadow: 0 -4px 14px rgba(0,0,0,.15);
+  }
+  .compareBar.on { display: flex; }
+  .compareBar .names { flex: 1; font-size: .9rem; }
+  .compareBar button.primary { background: var(--paper); color: var(--ink); }
+  .compareBar button.ghost { background: transparent; color: #fff; border: 1px solid #777; }
+
+  /* compare table */
+  .compareTableWrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  table.compare { border-collapse: collapse; width: 100%; min-width: 720px; font-size: .88rem; }
+  table.compare th, table.compare td { border-bottom: 1px solid var(--line); padding: 10px 14px; text-align: left; vertical-align: top; }
+  table.compare thead th { background: var(--teal-soft); position: sticky; top: 0; }
+  table.compare tbody th { width: 170px; background: #f4efe6; font-weight: 600; color: var(--ink-soft); }
+  table.compare td ul { margin: 0; padding-left: 18px; }
+  .opsDots { letter-spacing: 2px; }
+
+  /* stack builder */
+  .stackGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+  fieldset.pick { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 12px 14px; margin: 0; }
+  fieldset.pick legend { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); padding: 0 6px; }
+  fieldset.pick label { display: block; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: .9rem; }
+  fieldset.pick label:hover { background: var(--teal-soft); }
+  fieldset.pick input { margin-right: 8px; accent-color: var(--teal); }
+  .summary { background: var(--card); border: 1px solid var(--teal); border-radius: 12px; padding: 18px 20px; margin-top: 16px; }
+  .summary .big { font-size: 1.5rem; font-weight: 800; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+  button { font: inherit; border-radius: 8px; padding: 7px 14px; cursor: pointer; }
+  button.primary { background: var(--teal); color: #fff; border: 1px solid var(--teal); }
+  button.ghost { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+
+  footer.page { margin-top: 50px; font-size: .8rem; color: var(--ink-soft); }
+  @media print {
+    .controls, .compareBar, .presets, fieldset.pick input { display: none !important; }
+    body { background: #fff; }
+    .card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <h1>Zao Commons — Hosting &amp; Stack Compare</h1>
+  <p class="sub">An interactive comparison of hosting options for the Commons, researched for Phase 0 decisions D004 / D006.</p>
+  <p class="meta">
+    <strong>Data as of October 18, 2026.</strong> Prices and policies change — every entry links to its official pricing page.
+    Companion narrative: <a href="hosting-research.md">hosting-research.md</a> · Context: <a href="07-technology.md">Technology</a> · <a href="02-non-negotiables.md">Non-Negotiables (PRIVACY-4)</a>
+  </p>
+</header>
+
+<div class="callout" id="juris">
+  <h3>How to read jurisdiction here (the plain-language version)</h3>
+  <ul class="legend">
+    <li><span class="badge b-A">A · EU company, EU servers</span> strongest posture</li>
+    <li><span class="badge b-B">B · Non-US company, EU regions</span> outside direct US reach</li>
+    <li><span class="badge b-C">C · US company, EU regions available</span> EU data centers, US parent</li>
+  </ul>
+  <p style="font-size:.9rem;margin:10px 0 0;">
+    The US <strong>CLOUD Act</strong> lets US courts compel <em>US-incorporated</em> companies to hand over data they control — <em>regardless of where the servers sit</em>. A German or French or Singaporean company is outside that direct reach; requests must go through slower international channels. GDPR applies whenever data is <em>processed</em> in the EU, whoever the owner is. So: “EU region” on a US platform is real but partial protection; an EU (or non-US) company is defense-in-depth. Per our <a href="03-safety-and-threat-model.md">threat model</a>, jurisdiction is one layer — minimal retention is the stronger one.
+  </p>
+</div>
+
+<div class="callout warn">
+  <h3>What “Zao scale” assumes</h3>
+  <p style="font-size:.9rem;margin:0;">30–150 members · always-on (no sleeping apps — a community never sleeps) · Postgres ≤ 8&nbsp;GB · file storage ≤ 100&nbsp;GB · 3–10k digest emails/mo · light video: a few gatherings/week. Estimates are planning ranges, not quotes; € shown as ≈$ at ~1.08.
+  <br><br>⚠ Two traps we verified: <strong>Supabase’s free tier pauses projects after ~1 week of inactivity</strong> (disqualifying for an always-on Commons — budget Pro), and <strong>Vercel’s Hobby plan is personal/non-commercial only</strong> (an organization like Zao belongs on Pro).</p>
+</div>
+
+<h2 id="browse">1 · Browse providers</h2>
+<div class="controls" role="group" aria-label="Filters">
+  <input type="search" class="search" id="q" placeholder="Search providers…" aria-label="Search providers">
+  <button class="chip" data-f="all" aria-pressed="true">All</button>
+  <button class="chip" data-f="eu" aria-pressed="false">EU company (Tier A)</button>
+  <button class="chip" data-f="euregion" aria-pressed="false">EU regions</button>
+  <button class="chip" data-f="free" aria-pressed="false">Has free tier</button>
+  <button class="chip" data-f="oss" aria-pressed="false">Self-host / exit path</button>
+</div>
+<div id="catalog"></div>
+
+<h2 id="compareHead" style="display:none;">2 · Side-by-side compare</h2>
+<div class="compareTableWrap" id="compareWrap" style="display:none;">
+  <table class="compare" id="compareTable">
+    <thead><tr id="cmpHeadRow"></tr></thead>
+    <tbody id="cmpBody"></tbody>
+  </table>
+</div>
+
+<h2 id="stack">3 · Build a stack</h2>
+<p class="sub">Pick one option per layer — like configuring a product. The summary estimates monthly cost at Zao scale and shows your jurisdiction mix.</p>
+<div class="presets" role="group" aria-label="Preset stacks">
+  <button class="ghost" data-preset="familiar">⚡ Fast &amp; familiar</button>
+  <button class="ghost" data-preset="middle">⚖️ The middle path (docs’ lean)</button>
+  <button class="ghost" data-preset="sovereign">🏰 EU-sovereign</button>
+  <button class="ghost" data-preset="lean">🌱 Leanest sane</button>
+</div>
+<div class="stackGrid" id="stackGrid"></div>
+<div class="summary" id="stackSummary" aria-live="polite"></div>
+
+<footer class="page">
+  Part of the Zao Commons planning documents · maintained in the open · prices researched 2026-10-18 via official pricing pages and current comparisons — re-verify before committing.
+</footer>
+</div>
+
+<div class="compareBar" id="compareBar" role="region" aria-label="Compare selection">
+  <span style="font-weight:700;">Compare:</span>
+  <span class="names" id="barNames"></span>
+  <button class="primary" id="btnCompare">Compare →</button>
+  <button class="ghost" id="btnClear">Clear</button>
+</div>
+
+<script>
+/* ============================================================
+   DATA — update prices here (researched 2026-10-18)
+   jur: "A" EU company+EU servers · "B" non-US company · "C" US company
+   est: [low, high] USD/month at Zao scale
+   ops: 1 (none) … 5 (real sysadmin work)
+   ============================================================ */
+const DATA = [
+/* ---------- APP HOSTING / PaaS ---------- */
+{ id:"vercel", cat:"app", name:"Vercel", jur:"C",
+  hq:"USA (San Francisco)", eu:"EU regions (e.g. Frankfurt) for functions/edge; deploys & metadata US-anchored",
+  entry:"Hobby $0 · Pro $20/user/mo (incl. $20 usage credit)",
+  est:[20,35], free:"Yes — but personal/non-commercial only (ToS). An org like Zao → Pro.",
+  oss:"No (Next.js itself is open; the platform isn’t). Exit: redeploy anywhere Next runs.",
+  ops:1,
+  pros:["Best-in-class Next.js DX: git push → deploy, preview URLs","Zero server care","Your current wheelhouse"],
+  cons:["US entity → CLOUD Act reaches platform metadata regardless of region","Usage overages can surprise (bandwidth, function hours)","Mild lock-in via Vercel-specific features (middleware, image opts)"],
+  fit:"The comfortable choice. Pair with an EU database; keep member data out of platform-adjacent services.",
+  link:"https://vercel.com/pricing" },
+
+{ id:"netlify", cat:"app", name:"Netlify", jur:"C",
+  hq:"USA (San Francisco)", eu:"EU regions available",
+  entry:"Free tier · Pro $19/member/mo", est:[0,19],
+  free:"Yes (100 GB bandwidth)", oss:"No. Exit: standard static/Node — portable.",
+  ops:1,
+  pros:["Generous free tier, simple static+functions model","Forms, redirects, previews built in"],
+  cons:["US entity (CLOUD Act)","Less Next.js-native than Vercel","Overage pricing on the free tier"],
+  fit:"Fine if you outgrow Vercel pricing; otherwise no clear edge for us.",
+  link:"https://www.netlify.com/pricing" },
+
+{ id:"cloudflare", cat:"app", name:"Cloudflare Pages / Workers", jur:"C",
+  hq:"USA (San Francisco)", eu:"Global anycast; EU reach, but metadata/logs largely US-anchored",
+  entry:"Free · Paid (Standard) $5/mo incl. 10M requests", est:[0,5],
+  free:"Yes — very generous (100k req/day free; unlimited static requests)",
+  oss:"Partly (Workers runtime is proprietary; wrangler tooling is open). Exit: moderate.",
+  ops:2,
+  pros:["Cheapest credible option at our scale — possibly $0/mo","Fast everywhere; D1/KV/R2 primitives included","No cold-start previews drama"],
+  cons:["US entity — and Cloudflare’s GDPR posture has real friction history","Workers runtime is CF-specific → rework to leave","Full-stack patterns (WS, long-lived realtime) need care here"],
+  fit:"Great for the static front door + light API. Our realtime/chat layer wants a home elsewhere.",
+  link:"https://www.cloudflare.com/plans/developer-platform" },
+
+{ id:"railway", cat:"app", name:"Railway", jur:"C",
+  hq:"USA — infra runs on AWS/GCP", eu:"EU regions available",
+  entry:"Hobby $5/mo · Pro $20/mo, then usage (CPU/RAM/egress metered)", est:[5,25],
+  free:"No real free tier", oss:"No. Exit: it’s Docker — very portable.",
+  ops:1,
+  pros:["Dead-simple: push a repo or Dockerfile, done","Runs app + Postgres + workers in one place","Your recent experience"],
+  cons:["Usage creep is the classic Railway surprise","US entity (CLOUD Act, via underlying AWS/GCP too)","Smaller company; pricing has shifted repeatedly over the years"],
+  fit:"Fast prototyping home. Keep an eye on the monthly meter; export discipline applies.",
+  link:"https://railway.com/pricing" },
+
+{ id:"render", cat:"app", name:"Render", jur:"C",
+  hq:"USA (San Francisco)", eu:"EU region (Frankfurt) available",
+  entry:"Free (spins down) · web service from ~$7/mo · managed Postgres from ~$7/mo", est:[7,25],
+  free:"Yes — but free web services sleep after inactivity", oss:"No. Exit: standard Node/Docker.",
+  ops:1,
+  pros:["Honest, predictable pricing; genuine free tier for experiments","One dashboard for web + cron + Postgres","Simpler mental model than AWS"],
+  cons:["US entity","Free tier cold-starts (wrong shape for an always-on community)","Egress fees beyond allowance"],
+  fit:"A calm middle option if Vercel+Supabase feels like one vendor too many.",
+  link:"https://render.com/pricing" },
+
+{ id:"fly", cat:"app", name:"Fly.io", jur:"C",
+  hq:"USA", eu:"EU regions (Frankfurt, Amsterdam, London, Madrid…)",
+  entry:"Pay-as-you-go; small shared VM ≈ $5.70/mo · volumes $0.15/GB", est:[6,20],
+  free:"No (PAYG only)", oss:"Partly (much of their infra tooling is open). Exit: Docker images — portable.",
+  ops:2,
+  pros:["Run real Docker close to users; cheap for steady always-on workloads","Anycast networking included","Good docs culture"],
+  cons:["US entity","No free tier anymore; historical billing surprises reported","You’re closer to the metal (more thinking) than Vercel/Railway"],
+  fit:"Where an always-on app wants to be cheap and simple without full server admin.",
+  link:"https://fly.io/docs/about/pricing" },
+
+/* ---------- VPS (self-host everything) ---------- */
+{ id:"hetzner", cat:"vps", name:"Hetzner", jur:"A",
+  hq:"Germany (Hetzner Online GmbH)", eu:"Germany & Finland — also has US locations; we pick EU",
+  entry:"CX22 ≈ €4.49/mo (after June 2026 price rise; was €3.29)",
+  est:[5,25], free:"No (small trial credit only)",
+  oss:"n/a — raw Linux. Exit: everything is yours; rsync away.",
+  ops:4,
+  pros:["EU company under EU law — the sovereignty gold standard at hobby prices","Best price/performance in class even after the 2026 hikes","Privacy-respecting culture (accepts payment w/o KYC)"],
+  cons:["June 2026 price increase was steep on some lines (up to ~3× on CPX) — recheck tiers","You are the sysadmin: updates, backups, monitoring, 2am","Console/docs assume competence"],
+  fit:"D006’s current lean: EU VPS (or two) carrying app, self-hosted Postgres/Supabase, and LiveKit. Trades money for ops hours.",
+  link:"https://www.hetzner.com/cloud" },
+
+{ id:"digitalocean", cat:"vps", name:"DigitalOcean", jur:"C",
+  hq:"USA (NYC)", eu:"Frankfurt & Amsterdam datacenters",
+  entry:"From $4/mo · 2 GB $12/mo · 4 GB $24/mo (per-second billing since 2026)",
+  est:[6,30], free:"No ($200-style trial credits come and go)",
+  oss:"n/a. Exit: yours entirely.", ops:3,
+  pros:["The one you already know — tutorials are the industry’s best","Snapshots, backups, spaces all one-click","Predictable flat pricing"],
+  cons:["US entity — CLOUD Act reaches the parent despite EU datacenters","Slightly pricier than Hetzner for the same specs","Managed-DB add-ons add up"],
+  fit:"Your familiarity is genuinely valuable. The jurisdiction step-down vs. Hetzner is the trade.",
+  link:"https://www.digitalocean.com/pricing/droplets" },
+
+{ id:"ovh", cat:"vps", name:"OVHcloud", jur:"A",
+  hq:"France", eu:"EU datacenters (Gravelines, Roubaix, Strasbourg…)",
+  entry:"VPS-1 from ≈ €4.49–6.49/mo (repriced Apr 2026)", est:[5,25],
+  free:"No", oss:"n/a. Exit: yours.", ops:4,
+  pros:["EU sovereign giant — French entity, EU law","Huge range (VPS → bare metal)","Cheap"],
+  cons:["Support reputation is mixed","2021 Strasbourg fire is the lesson behind our second-jurisdiction backup rule","Control panel is workmanlike"],
+  fit:"A Tier-A alternative to Hetzner if capacity or terms look better.",
+  link:"https://www.ovhcloud.com/en/vps" },
+
+{ id:"scaleway", cat:"vps", name:"Scaleway", jur:"A",
+  hq:"France (Iliad group)", eu:"EU-only regions: Paris, Amsterdam, Warsaw",
+  entry:"Stardust ≈ €0.36/mo (IPv6-only!) / ≈ €3.28 with IPv4 · regular from ≈ €4.99",
+  est:[4,25], free:"No", oss:"n/a. Exit: yours.", ops:4,
+  pros:["EU-only cloud — GDPR-native by design","Cheapest IPv4 full VPS in Tier A","Clean modern API"],
+  cons:["Stardust is too weak for production (1 vCPU/1 GB, IPv6-only)","Smaller ecosystem/community than Hetzner/DO","Some services rotate/deprecate faster than the giants"],
+  fit:"The other French answer. Compare live pricing vs. OVH when choosing.",
+  link:"https://www.scaleway.com/en/pricing" },
+
+{ id:"linode", cat:"vps", name:"Linode (Akamai)", jur:"C",
+  hq:"USA (Akamai)", eu:"EU datacenters (Frankfurt, London…)",
+  entry:"From ≈ $5/mo (1 GB)", est:[5,25], free:"No ($ credit trials)",
+  oss:"n/a. Exit: yours.", ops:3,
+  pros:["Simple, stable, good docs; Akamai backbone","Flat predictable pricing"],
+  cons:["US parent (CLOUD Act)","No standout advantage over DO/Hetzner for us"],
+  fit:"Include for completeness; little reason to prefer over DO (familiarity) or Hetzner (jurisdiction).",
+  link:"https://www.linode.com/pricing" },
+
+/* ---------- MANAGED POSTGRES / BACKEND ---------- */
+{ id:"supabase", cat:"db", name:"Supabase Cloud", jur:"B",
+  hq:"Singapore (Supabase Pte. Ltd., per its ToS)", eu:"EU regions available; GDPR transfers via SCCs",
+  entry:"Free · Pro $25/mo (8 GB db, 100k MAU, $10 compute credit) · Team $599/mo",
+  est:[25,40], free:"Yes — but free projects PAUSE after ~1 week idle → unusable for an always-on Commons",
+  oss:"Yes — fully open-source; self-host escape hatch is real and documented",
+  ops:1,
+  pros:["Auth + Postgres + realtime + storage + edge fns in one — exactly our spine (D004)","Singapore entity sits outside direct CLOUD Act reach","Open-source exit path keeps vendor honest","Your recent experience"],
+  cons:["Not an EU company either — SCC-based transfers; GDPR posture is contractual","Compute overages meter beyond the credit","Team tier ($599) needed for SSO etc. later","Realtime at scale wants paid tiers"],
+  fit:"The documented lean (D004): Pro in an EU region + a written self-host exit plan, reviewed each gate. The Singapore detail improves on our earlier US-company assumption.",
+  link:"https://supabase.com/pricing" },
+
+{ id:"neon", cat:"db", name:"Neon", jur:"C",
+  hq:"USA — acquired by Databricks (May 2025)", eu:"EU regions available",
+  entry:"Free (0.5 GB) · usage ≈ $0.106/compute-hr (no minimum) + storage",
+  est:[10,45], free:"Yes (0.5 GB, scales to zero)", oss:"Yes — Neon is open-source; self-host emerging",
+  ops:1,
+  pros:["Serverless Postgres with instant branching — lovely for dev","Usage-only pricing can be cheap for bursty apps","Your recent experience"],
+  cons:["Databricks acquisition pulls the roadmap toward AI-agent infrastructure","Scale-to-zero is the wrong shape for an always-on chat/community app (cold reads, always-warm costs)","Usage pricing is hard to predict at fixed budgets"],
+  fit:"Great for experiments; weaker product-fit than Supabase for a 24/7 community. Watch post-acquisition direction.",
+  link:"https://neon.tech/pricing" },
+
+{ id:"selfhost", cat:"db", name:"Self-hosted (on your VPS)", jur:"A",
+  hq:"— runs on the VPS you pick (Hetzner → Tier A)", eu:"Wherever your VPS is",
+  entry:"€0 incremental (Postgres) — or self-host Supabase OSS for the full stack",
+  est:[0,8], free:"n/a", oss:"Yes — the whole point",
+  ops:5,
+  pros:["Maximum sovereignty; data never leaves a box you control","Fixed, tiny cost","No vendor terms to re-read every year"],
+  cons:["Backups, upgrades, monitoring, and 2am are yours (ETHICS-4 bus-factor risk)","Supabase OSS self-host is famously fiddlier than their cloud","You become the on-call"],
+  fit:"The D004 exit plan destination — and the C-stack’s destination. A Phase-2+ move once runbooks exist, not a day-one choice for a solo volunteer.",
+  link:"https://supabase.com/docs/guides/self-hosting" },
+
+/* ---------- VOICE / VIDEO ---------- */
+{ id:"livekit", cat:"media", name:"LiveKit Cloud", jur:"C",
+  hq:"USA", eu:"Global edge; region selection available",
+  entry:"Build plan $0/mo (100 concurrent, 50 GB bandwidth, 5k min) · then usage-metered (bandwidth/participants)",
+  est:[0,30], free:"Yes — generous for a small church’s weekly rhythm",
+  oss:"Yes — LiveKit’s SFU is open-source; self-host is a documented path",
+  ops:1,
+  pros:["The D005 pick: embed, don’t build","Free tier plausibly covers our whole Phase 3","E2EE support available for sensitive rooms","Open-source server keeps the exit real"],
+  cons:["US company carries A/V metadata (media itself can be E2EE)","Usage beyond free tier is the classic cloud-video bill","Smaller company"],
+  fit:"Start on the free Build plan, watch the meter, self-host on Hetzner if/when it matters.",
+  link:"https://livekit.com/pricing" },
+
+{ id:"livekitself", cat:"media", name:"Self-hosted LiveKit / Jitsi (VPS)", jur:"A",
+  hq:"— runs on your VPS", eu:"Wherever your VPS is",
+  entry:"€0 software · needs a 2–4 GB server (≈ €5–15/mo) with UDP/TURN openness",
+  est:[5,15], free:"n/a", oss:"Yes — fully",
+  ops:4,
+  pros:["Calls and their metadata stay home","Fixed cost","Jitsi needs no client install for guests"],
+  cons:["TURN/STUN networking is the fiddliest ops in this whole list","Capacity planning for big services (a Harbor ≠ a stadium, thankfully)","Upgrade discipline"],
+  fit:"The sovereignty endgame for the Sanctuary — after the runbooks exist.",
+  link:"https://docs.livekit.io/home/self-hosting/deployment" },
+
+/* ---------- EMAIL (digests) ---------- */
+{ id:"brevo", cat:"email", name:"Brevo", jur:"A",
+  hq:"France (Paris)", eu:"EU processing",
+  entry:"Free ≈ 300 emails/day · paid from ≈ $9–25/mo", est:[0,20],
+  free:"Yes — covers our digest volume at current scale",
+  oss:"No (API-based). Exit: standard SMTP — portable.",
+  ops:1,
+  pros:["EU company — the only Tier A sender in this set","Free tier ≈ 9k emails/mo","Marketing+transactional in one"],
+  cons:["Deliverability reputation a notch below Postmark’s (fine for community digests)","UI pushes marketing features we don’t need"],
+  fit:"The values-aligned default for the daily/weekly digest.",
+  link:"https://www.brevo.com/pricing" },
+
+{ id:"postmark", cat:"email", name:"Postmark", jur:"C",
+  hq:"USA (ActiveCampaign)", eu:"EU sending region available",
+  entry:"$15/mo for 10k emails", est:[15,25],
+  free:"No (100/mo test)", oss:"No. Exit: SMTP/API — portable.",
+  ops:1,
+  pros:["Best deliverability & support reputation in transactional email","Predictable simple tiers"],
+  cons:["US parent","Pricier per email than Brevo at volume"],
+  fit:"If digests ever hit deliverability trouble, this is the proven fix.",
+  link:"https://postmarkapp.com/pricing" },
+
+{ id:"resend", cat:"email", name:"Resend", jur:"C",
+  hq:"USA", eu:"US-anchored",
+  entry:"Free 3k/mo (100/day) · $20/mo for 50k", est:[0,20],
+  free:"Yes — 3k/mo", oss:"Partly (SDKs/templates open). Exit: portable.",
+  ops:1,
+  pros:["Delightful modern DX (React Email)","Free tier fits our volume today"],
+  cons:["US company; youngest company in this set","100/day cap can pinch on burst days (event reminders)"],
+  fit:"Fine developer pick; Brevo matches it free with a better jurisdiction story.",
+  link:"https://resend.com/pricing" },
+];
+
+const CATS = {
+  app:  { label:"App hosting — PaaS", blurb:"The front door + API live here" },
+  vps:  { label:"App hosting — VPS (self-managed)", blurb:"A Linux box you rule entirely" },
+  db:   { label:"Database / backend platform", blurb:"Postgres, auth, realtime, storage" },
+  media:{ label:"Voice & video", blurb:"The Sanctuary’s sound (D005)" },
+  email:{ label:"Email — the gentle digest", blurb:"The letter that never chases" },
+};
+const JURNAME = { A:"A · EU company, EU servers", B:"B · Non-US company, EU regions", C:"C · US company, EU regions" };
+const OPSWORD = ["","none","low","moderate","high","real sysadmin work"];
+const EUR = n => "≈ $" + n;
+
+/* ---------- rendering: catalog ---------- */
+const catalog = document.getElementById("catalog");
+function cardHTML(p){
+  return `<article class="card" data-id="${p.id}" data-jur="${p.jur}"
+    data-eu="${/EU|wherever|Frankfurt/i.test(p.eu)?1:0}" data-free="${/yes|n\/a/i.test(p.free)?1:0}"
+    data-oss="${/yes|n\/a|partly/i.test(p.oss)?1:0}" data-text="${(p.name+' '+p.hq+' '+p.cat).toLowerCase()}">
+    <div class="top"><h3>${p.name}</h3><span class="badge b-${p.jur}">${JURNAME[p.jur]}</span></div>
+    <dl>
+      <dt>Entity</dt><dd>${p.hq}</dd>
+      <dt>EU story</dt><dd>${p.eu}</dd>
+      <dt>Entry</dt><dd>${p.entry}</dd>
+      <dt>@ Zao scale</dt><dd><strong>${p.est[0]===0?"$0":EUR(p.est[0])}–${EUR(p.est[1])}/mo</strong></dd>
+      <dt>Free tier</dt><dd>${p.free}</dd>
+      <dt>Exit path</dt><dd>${p.oss}</dd>
+      <dt>Ops burden</dt><dd class="opsDots">${"●".repeat(p.ops)}${"○".repeat(5-p.ops)} ${OPSWORD[p.ops]}</dd>
+    </dl>
+    <p class="pc plus"><b>+</b> ${p.pros.join(" · ")}</p>
+    <p class="pc minus"><b>−</b> ${p.cons.join(" · ")}</p>
+    <p class="fit"><strong>Zao fit:</strong> ${p.fit}</p>
+    <label class="cmp"><input type="checkbox" data-cmp="${p.id}"> Add to compare · <a href="${p.link}" target="_blank" rel="noopener">official pricing ↗</a></label>
+  </article>`;
+}
+for (const [cat, meta] of Object.entries(CATS)) {
+  const items = DATA.filter(p=>p.cat===cat);
+  const sec = document.createElement("section");
+  sec.innerHTML = `<h3 class="cat-head">${meta.label} — <span style="text-transform:none;letter-spacing:0">${meta.blurb}</span></h3>
+    <div class="grid">${items.map(cardHTML).join("")}</div>`;
+  catalog.appendChild(sec);
+}
+
+/* ---------- filters ---------- */
+let filter = "all";
+document.querySelectorAll(".chip").forEach(ch=>{
+  ch.addEventListener("click", ()=>{
+    document.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed","false"));
+    ch.setAttribute("aria-pressed","true"); filter = ch.dataset.f; applyFilters();
+  });
+});
+document.getElementById("q").addEventListener("input", applyFilters);
+function applyFilters(){
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  document.querySelectorAll(".card").forEach(c=>{
+    const okF = filter==="all" || c.dataset[filter]==="1";
+    const okQ = !q || c.dataset.text.includes(q) || c.querySelector("h3").textContent.toLowerCase().includes(q);
+    c.hidden = !(okF && okQ);
+  });
+}
+
+/* ---------- compare (ecommerce style) ---------- */
+const picked = new Set();
+const MAX = 4;
+document.addEventListener("change", e=>{
+  const id = e.target.dataset && e.target.dataset.cmp;
+  if(!id) return;
+  if(e.target.checked){ if(picked.size>=MAX){ e.target.checked=false; alert("Compare holds "+MAX+" at a time — remove one first."); return;} picked.add(id); }
+  else picked.delete(id);
+  renderCompareBar();
+});
+const byId = id => DATA.find(p=>p.id===id);
+function renderCompareBar(){
+  const bar = document.getElementById("compareBar");
+  bar.classList.toggle("on", picked.size>0);
+  document.getElementById("barNames").textContent = [...picked].map(id=>byId(id).name).join(" · ");
+  document.querySelectorAll(".card").forEach(c=> c.classList.toggle("inCompare", picked.has(c.dataset.id)));
+}
+document.getElementById("btnClear").addEventListener("click", ()=>{
+  picked.clear();
+  document.querySelectorAll("[data-cmp]").forEach(i=>i.checked=false);
+  renderCompareBar(); renderCompareTable();
+});
+document.getElementById("btnCompare").addEventListener("click", ()=>{ renderCompareTable(); location.hash="#compareHead"; });
+
+function renderCompareTable(){
+  const wrap = document.getElementById("compareWrap"), head = document.getElementById("compareHead");
+  const list = [...picked].map(byId);
+  const on = list.length>0;
+  wrap.style.display = on?"block":"none"; head.style.display = on?"block":"none";
+  if(!on) return;
+  document.getElementById("cmpHeadRow").innerHTML = `<th scope="col">Feature</th>` +
+    list.map(p=>`<th scope="col">${p.name}<br><span class="badge b-${p.jur}">${JURNAME[p.jur]}</span></th>`).join("");
+  const row = (label, fn) => `<tr><th scope="row">${label}</th>${list.map(fn).join("")}</tr>`;
+  document.getElementById("cmpBody").innerHTML =
+    row("Category", p=>`<td>${CATS[p.cat].label}</td>`) +
+    row("Legal entity", p=>`<td>${p.hq}</td>`) +
+    row("EU data story", p=>`<td>${p.eu}</td>`) +
+    row("Entry price", p=>`<td>${p.entry}</td>`) +
+    row("Est. @ Zao scale", p=>`<td><strong>${p.est[0]===0?"$0":EUR(p.est[0])}–${EUR(p.est[1])}/mo</strong></td>`) +
+    row("Free tier", p=>`<td>${p.free}</td>`) +
+    row("Self-host / exit", p=>`<td>${p.oss}</td>`) +
+    row("Ops burden", p=>`<td class="opsDots">${"●".repeat(p.ops)}${"○".repeat(5-p.ops)} ${OPSWORD[p.ops]}</td>`) +
+    row("Positives", p=>`<td><ul>${p.pros.map(x=>`<li>${x}</li>`).join("")}</ul></td>`) +
+    row("Negatives / watch", p=>`<td><ul>${p.cons.map(x=>`<li>${x}</li>`).join("")}</ul></td>`) +
+    row("Zao fit note", p=>`<td>${p.fit}</td>`) +
+    row("Pricing page", p=>`<td><a href="${p.link}" target="_blank" rel="noopener">official ↗</a></td>`);
+}
+renderCompareTable();
+
+/* ---------- stack builder ---------- */
+const LAYERS = [ {key:"app",label:"App hosting",allow:["app","vps"]},
+                 {key:"db",label:"Database"}, {key:"media",label:"Voice & video"}, {key:"email",label:"Email"} ];
+const stackGrid = document.getElementById("stackGrid");
+LAYERS.forEach(layer=>{
+  const opts = DATA.filter(p=> layer.allow ? layer.allow.includes(p.cat) : p.cat===layer.key);
+  const fs = document.createElement("fieldset"); fs.className="pick";
+  fs.innerHTML = `<legend>${layer.label}</legend>` + opts.map(p=>
+    `<label><input type="radio" name="${layer.key}" value="${p.id}"> ${p.name} <span class="badge b-${p.jur}">${p.jur}</span></label>`).join("");
+  stackGrid.appendChild(fs);
+});
+stackGrid.addEventListener("change", renderSummary);
+
+const PRESETS = {
+  familiar:{ app:"vercel", db:"supabase", media:"livekit", email:"resend" },
+  middle:  { app:"hetzner", db:"supabase", media:"livekitself", email:"brevo" },
+  sovereign:{ app:"hetzner", db:"selfhost", media:"livekitself", email:"brevo" },
+  lean:    { app:"cloudflare", db:"supabase", media:"livekit", email:"brevo" },
+};
+document.querySelectorAll("[data-preset]").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    const p = PRESETS[b.dataset.preset];
+    for(const [k,v] of Object.entries(p)){
+      const radio = document.querySelector(`input[name="${k}"][value="${v}"]`);
+      if(radio) radio.checked = true;
+    }
+    renderSummary();
+  });
+});
+
+function renderSummary(){
+  const chosen = LAYERS.map(l=>{
+    const r = document.querySelector(`input[name="${l.key}"]:checked`);
+    return { layer:l, p: r ? byId(r.value) : null };
+  });
+  if(chosen.some(c=>!c.p)){
+    document.getElementById("stackSummary").innerHTML =
+      `<p style="margin:0">Pick one option per layer (or tap a preset) — the estimate appears here.</p>`;
+    return;
+  }
+  const low = chosen.reduce((s,c)=>s+c.p.est[0],0), high = chosen.reduce((s,c)=>s+c.p.est[1],0);
+  const worst = chosen.map(c=>c.p.jur).sort().pop(); // A<B<C
+  const ops = Math.max(...chosen.map(c=>c.p.ops));
+  const tiers = [...new Set(chosen.map(c=>c.p.jur))].map(j=>`<span class="badge b-${j}">${JURNAME[j]}</span>`).join(" ");
+  const verdict = worst==="A" ? "Full Tier A — strongest sovereignty posture available."
+    : worst==="B" ? "No US entities in the critical path — solid posture."
+    : "US entities carry part of your stack — real but partial protection; lean on minimal retention (doc 03).";
+  document.getElementById("stackSummary").innerHTML = `
+    <p style="margin:0 0 4px"><span class="big">$${low}–${high}/mo</span> <span style="color:var(--ink-soft)">estimated at Zao scale</span></p>
+    <p style="margin:4px 0">Jurisdiction mix: ${tiers}<br>Ops burden: <span class="opsDots">${"●".repeat(ops)}${"○".repeat(5-ops)}</span> ${OPSWORD[ops]}</p>
+    <p style="margin:4px 0 0"><strong>${verdict}</strong></p>
+    <p style="margin:8px 0 0;font-size:.85rem;color:var(--ink-soft)">${chosen.map(c=>`${c.layer.label}: <strong>${c.p.name}</strong> — ${c.p.fit}`).join("<br>")}</p>`;
+}
+renderSummary();
+</script>
+</body>
+</html>
