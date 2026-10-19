@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------
+# Zao Commons — standard ignores
+# Rule of thumb: secrets and members' data never enter this repo
+# (see docs/02-non-negotiables.md — PRIVACY)
+# ---------------------------------------------------------------
+
+# --- Dependencies ---
+node_modules/
+.pnp
+.pnp.js
+
+# --- Build output ---
+/.next/
+/out/
+/build
+/dist
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Environment & secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+
+# --- Supabase local state ---
+.supabase/
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Testing & coverage ---
+coverage/
+.nyc_output/
+
+# --- Deploy platforms ---
+.vercel/
+
+# --- Editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Misc ---
+*.local
+*.design
+*.a11ycat
